@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="icon" href="data:,">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+<title>Pink Gala Check-In</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+body{
+  font-family:'Poppins',sans-serif;
+  margin:0;
+  padding:20px;
+  text-align:center;
+  background:linear-gradient(135deg,#fff0f6,#ffe3ec);
+}
+
+.mainCard{
+  background:white;
+  padding:30px;
+  border-radius:16px;
+  max-width:500px;
+  margin:auto;
+  box-shadow:0 15px 40px rgba(0,0,0,0.1);
+}
+
+h1{ color:#d63384; }
+
+.tableCard{
+  margin-top:30px;
+  padding:50px 20px;
+  background:linear-gradient(135deg,#d63384,#ff66a3);
+  color:white;
+  border-radius:18px;
+  cursor:pointer;
+}
+
+.tableNumber{ font-size:120px; }
+.bidderNumber{ font-size:32px; }
+.welcomeName{ font-size:28px; }
+
+input{
+  padding:20px;
+  font-size:24px;
+  width:100%;
+  max-width:420px;   /* 👈 controls width */
+  border-radius:10px;
+  box-sizing:border-box;
+  margin:0 auto;     /* 👈 centers it */
+  display:block;
+}
+
+button{
+  margin-top:15px;
+  padding:18px;
+  font-size:22px;
+  width:100%;
+  background:#d63384;
+  color:white;
+  border:none;
+  border-radius:10px;
+}
+
+.matchButton{
+  display:block;
+  width:100%;
+  margin:8px 0;
+  padding:18px;
+  font-size:20px;
+}
+
+#status{
+  margin-top:15px;
+  font-size:18px;
+  font-weight:600;
+  color:#d63384;
+}
+</style>
+</head>
+
+<body>
+
+<div class="mainCard">
+
+<div style="font-size:60px;margin-bottom:10px;color:#d63384;">🎗️</div>
+
+<h1>2026 Pink Gala Check-In</h1>
+
+<input id="searchInput" placeholder="Search guest..." />
+
+
+<div id="guestList"></div>
+
+
+<div id="loading">Loading guest list...</div>
+<div id="status"></div>
+
+
+</div>
+<script>
+
+const expectedIds = new Set();
+
+const SCRIPT_URL = "https://cool-dawn-c169.llcolej8.workers.dev/";
+
+/* =========================
+   STATE (FAST + STABLE)
+========================= */
+let guestList = [];
+const guestMap = {};
+const checkedInSet = new Set();
+
+const checkInQueue = [];
+let isProcessing = false;
+
+/* =========================
+   LOAD GUESTS
+========================= */
+async function loadGuests() {
+  try {
+
+    const url = "https://cool-dawn-c169.llcolej8.workers.dev/?guests=true";
+
+    console.log("FETCHING:", url);
+
+    const res = await fetch(url);
+
+    const text = await res.text();
+    console.log("RAW RESPONSE:", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("JSON PARSE FAILED");
+      document.getElementById("loading").innerText = "BAD JSON";
+      return;
+    }
+
+    // 🔥 THIS LINE FIXES YOUR ERROR FOREVER
+    if (!Array.isArray(data)) {
+      console.error("NOT ARRAY:", data);
+      document.getElementById("loading").innerText = "INVALID RESPONSE";
+      return;
+    }
+
+    guestList = data.map((g, i) => ({
+      id: i.toString(),
+      name: g.name,
+      bidder: g.bidder,
+      table: g.table,
+      checked: g.CheckedIn === "YES"
+    }));
+
+    guestList.forEach(g => guestMap[g.id] = g);
+
+    renderList([]);
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("status").innerText =
+      `${guestList.length} guests loaded — start typing`;
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("loading").innerText = "FAILED TO LOAD";
+  }
+}
+/* =========================
+   RENDER
+========================= */
+function renderList(list) {
+  const container = document.getElementById("guestList");
+  container.innerHTML = "";
+
+  list.forEach(g => {
+    const div = document.createElement("div");
+
+    // 🎯 MATCH BUTTON STYLE
+    div.style.marginTop = "10px";
+    div.style.padding = "18px";
+    div.style.fontSize = "20px";
+    div.style.background = "#d63384";
+    div.style.color = "white";
+    div.style.borderRadius = "10px";
+    div.style.cursor = "pointer";
+    div.style.transition = "0.2s";
+
+    div.onmouseover = () => div.style.opacity = "0.85";
+    div.onmouseout = () => div.style.opacity = "1";
+
+    div.onclick = () => handleCheckIn(g.id);
+
+    const status = g.checked
+  ? " ✔ Checked In"
+  : "";
+
+    div.innerHTML = `
+      ${g.name}${status}
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+/* =========================
+   SEARCH (DEBOUNCED)
+========================= */
+function debounce(fn, delay = 200) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function handleSearch(e) {
+  const term = (e.target.value || "").toLowerCase().trim();
+
+  if (!term) {
+    renderList([]);
+    document.getElementById("status").innerText =
+      `${guestList.length} guests loaded — start typing`;
+    return;
+  }
+
+  const filtered = guestList
+    .filter(g => (g.name || "").toLowerCase().includes(term))
+    .slice(0, 10);
+
+  renderList(filtered);
+
+  document.getElementById("status").innerText =
+    `${filtered.length} match(es)`;
+}
+
+
+
+/* =========================
+   CHECK-IN (SAFE)
+========================= */
+function handleCheckIn(id) {
+  
+  if (checkedInSet.has(id)) return;
+
+  checkedInSet.add(id);
+
+  queueCheckIn({ id });   // ✅ calls the REAL queue
+
+  setTimeout(() => {
+    checkedInSet.delete(id);
+  }, 10000);
+
+  const guest = guestMap[id];
+
+  document.getElementById("guestList").innerHTML = `
+  <div class="tableCard">
+    <div class="welcomeName">${guest.name}</div>
+    <div class="tableNumber">${guest.table || "-"}</div>
+    <div class="bidderNumber">Bidder #${guest.bidder || "-"}</div>
+
+    <div style="margin-top:15px;font-size:20px;">
+      ✅ Checked In
+    </div>
+
+    <button onclick="enterAuction('${guest.name}', '${guest.bidder}', '${guest.table}')">
+      Enter Auction
+    </button>
+
+    <div style="margin-top:10px;font-size:14px;opacity:0.8;">
+      Or tap anywhere to go back
+    </div>
+  </div>
+`;
+
+confetti({
+  particleCount: 60,
+  spread: 70,
+  origin: { y: 0.6 }
+});
+
+}
+
+
+
+   
+
+/* =========================
+   QUEUE SYSTEM (RELIABLE)
+========================= */
+const BATCH_SIZE = 20;
+
+function queueCheckIn(data) {
+  expectedIds.add(data.id); // 🔥 track it
+  checkInQueue.push(data);
+  processQueue();
+}
+
+async function processQueue() {
+  if (isProcessing) return;
+
+  isProcessing = true;
+
+  while (true) {
+
+    if (checkInQueue.length === 0) {
+      break;
+    }
+
+    // 🔒 LOCK snapshot of queue
+    const batch = checkInQueue.slice(0, BATCH_SIZE);
+
+    // 🔥 REMOVE ONLY what we took
+    checkInQueue.splice(0, batch.length);
+
+    try {
+      await sendBatch(batch);
+
+      // small pacing
+      await new Promise(r => setTimeout(r, 75));
+
+    } catch (err) {
+      console.error("Retrying batch...", err);
+
+      // 🔥 CRITICAL: safely re-add to FRONT
+      checkInQueue.push(...batch);
+
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
+  isProcessing = false;
+}
+
+
+async function sendBatch(batch, attempt = 1) {
+
+  // 🔥 normalize to strings (critical fix)
+  const idsToSend = batch.map(b => String(b.id));
+
+  const formData = new URLSearchParams();
+  formData.append("ids", JSON.stringify(idsToSend));
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: formData
+    });
+
+    const text = await res.text();
+    console.log("POST RESPONSE:", text);
+
+    if (!res.ok) throw new Error("HTTP error");
+
+    const result = JSON.parse(text);
+
+    // 🔥 normalize response too
+    const processed = (result.processed || []).map(String);
+
+    // =========================
+    // 🧠 REDUNDANT SAFETY CHECKS
+    // =========================
+
+    // 1. Exact ID match check
+    const failed = idsToSend.filter(id => !processed.includes(id));
+
+    // 2. Count check
+    const countMatch = processed.length === idsToSend.length;
+
+    // 3. Final success flag
+    const success = failed.length === 0 && countMatch;
+
+    // =========================
+    // 🔄 HANDLE RESULTS
+    // =========================
+
+    if (!success) {
+      console.warn("⚠️ Batch mismatch detected", {
+        sent: idsToSend,
+        processed,
+        failed,
+        countMatch
+      });
+
+      // retry only failed IDs (if we know them)
+      if (failed.length > 0) {
+        checkInQueue.push(...failed.map(id => ({ id })));
+      } else {
+        // fallback: retry entire batch
+        checkInQueue.push(...batch);
+      }
+    }
+
+    console.log(`✅ Batch success: ${processed.length}/${idsToSend.length}`);
+
+  } catch (err) {
+
+    if (attempt <= 3) {
+      console.warn(`🔁 Retrying batch (attempt ${attempt})`, idsToSend);
+
+      await new Promise(r => setTimeout(r, 200 * attempt));
+
+      return sendBatch(batch, attempt + 1);
+    }
+
+    console.error("❌ PERMANENT FAILURE:", idsToSend);
+
+    // fallback retry
+    checkInQueue.push(...batch);
+  }
+}
+
+  
+
+/* =========================
+   INIT
+========================= */
+window.addEventListener("DOMContentLoaded", () => {
+  const input = document.getElementById("searchInput");
+
+  input.addEventListener("input", debounce(handleSearch));
+
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      const term = input.value.toLowerCase().trim();
+
+      const match = guestList.find(g =>
+        (g.name || "").toLowerCase().includes(term)
+      );
+
+      if (match) {
+        handleCheckIn(match.id);
+      }
+    }
+  });
+
+  // 🔥 THIS WAS MISSING
+  loadGuests();
+});
+
+function resetCheckIn() {
+  document.getElementById("guestList").innerHTML = "";
+  document.getElementById("searchInput").value = "";
+  document.getElementById("searchInput").focus();
+
+  document.getElementById("status").innerText =
+    `${guestList.length} guests loaded — start typing`;
+}
+
+function enterAuction(name, bidder, table) {
+
+  const url = `/RA-auction.html?name=${encodeURIComponent(name)}&bidder=${bidder}&table=${table}`;
+
+  window.location.href = url;
+}
+
+</script>
+
+</body>
+</html>
