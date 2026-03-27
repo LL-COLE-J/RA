@@ -229,7 +229,7 @@ function handleCheckIn(id) {
         ✅ Checked In
       </div>
 
-      <<button onclick="event.stopPropagation(); enterAuction('${guest.name}', '${guest.bidder}', '${guest.table}')">
+      <button onclick="event.stopPropagation(); goToAuction('${guest.name}', '${guest.bidder}', '${guest.table}')">
         Enter Auction
       </button>
     </div>
@@ -298,9 +298,11 @@ function resetCheckIn() {
   document.getElementById("searchInput").focus();
 }
 
-function enterAuction(name, bidder, table) {
-  window.location.href =
-    `/auction.html?name=${encodeURIComponent(name)}&bidder=${bidder}&table=${table}`;
+function goToAuction(name, bidder, table) {
+  setTimeout(() => {
+    window.location.href =
+      `/auction.html?name=${encodeURIComponent(name)}&bidder=${bidder}&table=${table}`;
+  }, 700);
 }
 
 </script>
