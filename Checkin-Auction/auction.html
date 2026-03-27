@@ -160,8 +160,7 @@ function renderItems(items) {
   div.innerHTML = "";
 
   items
-    .filter(i => (i.status || "").toLowerCase() !== "closed")
-    .filter(item => {
+.filter(i => true)    .filter(item => {
       if (!showMineOnly) return true;
 
       const isWinning = String(item.current_winner) === String(currentBidder);
@@ -169,12 +168,16 @@ function renderItems(items) {
 
       return isWinning || hasBid;
     })
-    .sort((a, b) => (b.current_bid || 0) - (a.current_bid || 0))
+    .sort((a, b) => {
+  const aBid = Number(a.current_bid) || Number(a.starting_bid) || 0;
+  const bBid = Number(b.current_bid) || Number(b.starting_bid) || 0;
+  return bBid - aBid;
+})
     .forEach(item => {
 
       const id = item.item_id;
       const name = item.name;
-      const currentBid = Number(item.current_bid) || 0;
+      const currentBid = Number(item.current_bid) || Number(item.starting_bid) || 0;
       const winner = item.current_winner || "-";
       const image = item.image || "";
 
@@ -191,7 +194,8 @@ function renderItems(items) {
         previousWinners[`alerted_${id}`] = false;
       }
 
-      const nextBid = currentBid + 50;
+      const increment = Number(item.min_increment) || 50;
+const nextBid = currentBid + increment;
 
       const card = document.createElement("div");
       card.className = "bid-item";
@@ -229,22 +233,35 @@ function renderItems(items) {
         <div style="font-size:18px;font-weight:bold;">${name}</div>
 
         <div>
-          Current: <strong>$${currentBid}</strong><br>
+          ${item.current_bid 
+  ? `Current: <strong>$${currentBid}</strong>` 
+  : `Starting Bid: <strong>$${currentBid}</strong>`
+}
           Leader: ${winner}<br>
           <small>Min Next Bid: $${nextBid}</small>
         </div>
 
-        <button onclick="placeQuickBid('${id}', ${nextBid}, this)">
-          Bid $${nextBid}
-        </button>
+        ${item.status !== "open"
+  ? `<button disabled style="opacity:0.5;">Closed</button>`
+  : `<button onclick="placeQuickBid('${id}', ${nextBid}, this)">
+       Bid $${nextBid}
+     </button>`
+}
 
-        <div style="margin-top:10px;">
-          <input id="input-${id}" type="number"
-            onfocus="isInteracting=true"
-            onblur="isInteracting=false">
-          <button onclick="placeCustomBid('${id}', this)">Submit</button>
-        </div>
+${item.status !== "open"
+  ? `
+    <input disabled style="opacity:0.5;">
+    <button disabled style="opacity:0.5;">Submit</button>
+  `
+  : `
+    <input id="input-${id}" type="number"
+      onfocus="isInteracting=true"
+      onblur="isInteracting=false">
+    <button onclick="placeCustomBid('${id}', this)">Submit</button>
+  `
+}
 
+       
         <div id="status-${id}"></div>
       `;
 
@@ -255,7 +272,7 @@ function renderItems(items) {
 }
 
 // ===== FETCH (OPTIMIZED) =====
-const SCRIPT_URL = "https://cool-dawn-c169.llcolej8.workers.dev/";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjcBzFLO9XFpkWhbTLaRdG4DqpAbrvmnEPc9EwwG6eTwfG73UTQGZD2-U10aeUCV-6/exec";
 
 async function fetchItems() {
   try {
@@ -329,9 +346,13 @@ async function placeCustomBid(id, btn) {
   if (!val) return showToast("Enter bid");
 
   const item = currentItems.find(i => i.item_id == id);
-  const current = Number(item?.current_bid) || 0;
+  const current = Number(item?.current_bid) || Number(item?.starting_bid) || 0;
+const increment = Number(item.min_increment) || 50;
+const required = current + increment;
 
-  if (val <= current) return showToast(`Bid must exceed $${current}`);
+if (val < required) {
+  return showToast(`Minimum bid is $${required}`);
+}
   if (!confirm(`Place bid of $${val}?`)) return;
 
   btn.disabled = true;
