@@ -107,6 +107,7 @@ let myBids = {};
 let showMineOnly = false;
 let isInteracting = false;
 let lastFetch = 0;
+let pendingBids = {};  
 
 // ===== TOAST =====
 function showToast(msg) {
@@ -143,6 +144,8 @@ function renderItems(items) {
 
       const isWinning = String(winner) === String(currentBidder);
       const wasWinning = String(previousWinners[id]) === String(currentBidder);
+      const hasBid = myBids[id];
+      const isPending = pendingBids[id];
 
       if (wasWinning && !isWinning && !previousWinners[`alerted_${id}`]) {
         showToast(`⚠️ Outbid on ${item.name}`);
@@ -157,11 +160,14 @@ function renderItems(items) {
       const card = document.createElement("div");
       card.className = "bid-item";
       if (isWinning) card.classList.add("winning");
-      if (!isWinning && myBids[id]) card.classList.add("losing");
+      if (!isWinning && myBids[id] && !pendingBids[id]) {
+  card.classList.add("losing");
+}
 
       card.innerHTML = `
         ${isWinning ? `<div>🏆 YOU ARE WINNING</div>` : ""}
-        ${!isWinning && myBids[id] ? `<div>⚠️ YOU ARE LOSING</div>` : ""}
+        ${isPending ? `<div>⏳ SUBMITTING BID...</div>` : ""}
+        ${!isWinning && hasBid && !isPending ? `<div>⚠️ YOU ARE LOSING</div>` : ""}
         <div><b>${item.name}</b></div>
         <div>Current: $${currentBid} | Leader: ${winner}</div>
         <div><small>Next: $${nextBid}</small></div>
@@ -210,8 +216,9 @@ async function placeQuickBid(id, amt, btn) {
   const status = document.getElementById(`status-${id}`);
   status.innerText = "Submitting...";
 
-  myBids[id] = true;
-  renderItems(currentItems);
+  pendingBids[id] = true;
+myBids[id] = true;
+renderItems(currentItems);
 
   await fetch(SCRIPT_URL, {
     method:"POST",
@@ -225,6 +232,7 @@ async function placeQuickBid(id, amt, btn) {
   });
 
   status.innerText = "⏳ Processing...";
+  delete pendingBids[id];
   btn.disabled = false;
   fetchItems();
 }
@@ -253,7 +261,8 @@ async function placeCustomBid(id, btn) {
   const status = document.getElementById(`status-${id}`);
   status.innerText = "Submitting...";
 
-  myBids[id] = true;
+  pendingBids[id] = true;
+myBids[id] = true;
 
   await fetch(SCRIPT_URL, {
     method:"POST",
@@ -267,6 +276,7 @@ async function placeCustomBid(id, btn) {
   });
 
   status.innerText = "⏳ Processing...";
+  delete pendingBids[id];
   btn.disabled = false;
   fetchItems();
 }
