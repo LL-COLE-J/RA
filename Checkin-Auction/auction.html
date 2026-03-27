@@ -91,11 +91,15 @@ img {
   <button onclick="toggleMyBids()" id="myBidsBtn">My Bids</button>
 </div>
 
-<div id="auctionItems"></div>
+<!-- 🔥 LOADING STATE -->
+<div id="auctionItems">
+  <div class="bid-item" style="opacity:0.6;">Loading auction items...</div>
+  <div class="bid-item" style="opacity:0.6;">Please wait...</div>
+</div>
 
 <script>
 
-console.log("AUCTION V4 LOADED");
+console.log("AUCTION V4.1 LOADED");
 
 // ===== USER =====
 const params = new URLSearchParams(window.location.search);
@@ -205,8 +209,7 @@ function renderItems(items) {
         ${!isWinning && hasBid ? `<div style="font-weight:bold;color:#ffc107;">⚠️ YOU ARE LOSING</div>` : ""}
 
         ${image ? `
-          <img src="${image}" 
-               onerror="this.style.display='none';">
+          <img src="${image}" onerror="this.style.display='none';">
         ` : `
           <div style="
             height:150px;
@@ -251,23 +254,33 @@ function renderItems(items) {
     });
 }
 
-// ===== FETCH =====
+// ===== FETCH (OPTIMIZED) =====
 const SCRIPT_URL = "https://cool-dawn-c169.llcolej8.workers.dev/";
 
 async function fetchItems() {
   try {
-    const res = await fetch(`${SCRIPT_URL}?items=true`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(`${SCRIPT_URL}?items=true`, {
+      signal: controller.signal,
+      cache: "no-store"
+    });
+
+    clearTimeout(timeout);
+
     const data = await res.json();
+
     currentItems = data;
     renderItems(currentItems);
+
   } catch (e) {
-    console.error(e);
+    console.error("Fetch failed:", e);
   }
 }
 
-// ===== QUICK BID =====
+// ===== BIDDING (unchanged) =====
 async function placeQuickBid(id, amt, btn) {
-
   if (btn.disabled) return;
   if (!confirm(`Place bid of $${amt}?`)) return;
 
@@ -307,9 +320,7 @@ async function placeQuickBid(id, amt, btn) {
   fetchItems();
 }
 
-// ===== CUSTOM BID =====
 async function placeCustomBid(id, btn) {
-
   if (btn.disabled) return;
 
   const input = document.getElementById(`input-${id}`);
@@ -352,12 +363,8 @@ async function placeCustomBid(id, btn) {
   fetchItems();
 }
 
-// ===== INIT =====
-function goHome(){
-  window.location.href = "/";
-}
-
-window.onload = () => {
+// ===== INIT (FASTER LOAD) =====
+document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("userInfo").innerText =
     `${user.name} | Bidder #${user.bidderId} | Table ${user.table}`;
@@ -366,12 +373,16 @@ window.onload = () => {
 
   setInterval(() => {
     const now = Date.now();
-    if (!isInteracting && now - lastFetch > 5000) {
+    if (!isInteracting && now - lastFetch > 2000) {
       fetchItems();
       lastFetch = now;
     }
-  }, 2000);
-};
+  }, 1000);
+});
+
+function goHome(){
+  window.location.href = "/";
+}
 
 </script>
 </body>
