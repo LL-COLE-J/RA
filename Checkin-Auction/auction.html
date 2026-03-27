@@ -2,7 +2,6 @@
 <html>
 <head>
 <meta charset="utf-8">
-
 <title>2026 Pink Gala Auction</title>
 
 <style>
@@ -13,25 +12,14 @@ body {
   margin: 0 auto;
   padding: 20px;
 }
-
-h1 {
-  color: #d63384;
-  text-align: center;
-}
-
-#auctionItems {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+h1 { color: #d63384; text-align: center; }
+#auctionItems { display: flex; flex-direction: column; gap: 20px; }
 
 .bid-item {
   border-radius: 12px;
   padding: 20px;
   background: linear-gradient(135deg, #d63384, #ff6fa3);
   color: white;
-  max-width: 600px;
-  margin: 0 auto;
 }
 
 .bid-item.winning {
@@ -40,13 +28,7 @@ h1 {
   border: 2px solid #28a745;
 }
 
-.bid-item.highlight {
-  box-shadow: 0 0 15px gold;
-}
-
-.bid-item.losing {
-  opacity: 0.85;
-}
+.bid-item.losing { opacity: 0.85; }
 
 button {
   background: #d63384;
@@ -70,15 +52,15 @@ input {
 
 <h1>2026 Pink Gala Auction</h1>
 
-<div style="text-align:center; margin-bottom:15px;">
+<div style="text-align:center;">
   <button onclick="goHome()">🏠 Home</button>
 </div>
 
-<div style="text-align:center; margin-bottom:20px;">
+<div style="text-align:center;">
   <strong id="userInfo"></strong>
 </div>
 
-<div style="text-align:center; margin-bottom:15px;">
+<div style="text-align:center;">
   <button onclick="toggleMyBids()" id="myBidsBtn">My Bids</button>
 </div>
 
@@ -102,18 +84,21 @@ let currentGuest = user.name;
 // ===== STATE =====
 let currentItems = [];
 let previousWinners = {};
-let lastBids = {};
 let myBids = {};
+let pendingBids = {};
+let lockedItems = {};
 let showMineOnly = false;
 let isInteracting = false;
 let lastFetch = 0;
-let pendingBids = {};  
+
+// ===== CONFIG =====
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjcBzFLO9XFpkWhbTLaRdG4DqpAbrvmnEPc9EwwG6eTwfG73UTQGZD2-U10aeUCV-6/exec";
 
 // ===== TOAST =====
 function showToast(msg) {
   const t = document.createElement("div");
   t.innerText = msg;
-  t.style = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 18px;border-radius:8px;z-index:9999;";
+  t.style = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px;border-radius:8px;";
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
@@ -121,7 +106,8 @@ function showToast(msg) {
 // ===== TOGGLE =====
 function toggleMyBids() {
   showMineOnly = !showMineOnly;
-  document.getElementById("myBidsBtn").innerText = showMineOnly ? "Showing: My Bids" : "My Bids";
+  document.getElementById("myBidsBtn").innerText =
+    showMineOnly ? "Showing: My Bids" : "My Bids";
   renderItems(currentItems);
 }
 
@@ -139,35 +125,30 @@ function renderItems(items) {
     .forEach(item => {
 
       const id = item.item_id;
-      const currentBid = Number(item.current_bid) || Number(item.starting_bid) || 0;
+      const currentBid = Number(item.current_bid) || 0;
       const winner = item.current_winner || "-";
 
       const isWinning = String(winner) === String(currentBidder);
-      const wasWinning = String(previousWinners[id]) === String(currentBidder);
       const hasBid = myBids[id];
       const isPending = pendingBids[id];
-
-      if (wasWinning && !isWinning && !previousWinners[`alerted_${id}`]) {
-        showToast(`⚠️ Outbid on ${item.name}`);
-        previousWinners[`alerted_${id}`] = true;
-      }
-
-      if (isWinning) previousWinners[`alerted_${id}`] = false;
+      const isLocked = lockedItems[id];
 
       const increment = Number(item.min_increment) || 50;
       const nextBid = currentBid + increment;
 
       const card = document.createElement("div");
       card.className = "bid-item";
+
       if (isWinning) card.classList.add("winning");
-      if (!isWinning && myBids[id] && !pendingBids[id]) {
-  card.classList.add("losing");
-}
+      if (!isWinning && hasBid && !isPending && !isLocked) {
+        card.classList.add("losing");
+      }
 
       card.innerHTML = `
         ${isWinning ? `<div>🏆 YOU ARE WINNING</div>` : ""}
         ${isPending ? `<div>⏳ SUBMITTING BID...</div>` : ""}
-        ${!isWinning && hasBid && !isPending ? `<div>⚠️ YOU ARE LOSING</div>` : ""}
+        ${!isWinning && hasBid && !isPending && !isLocked ? `<div>⚠️ YOU ARE LOSING</div>` : ""}
+
         <div><b>${item.name}</b></div>
         <div>Current: $${currentBid} | Leader: ${winner}</div>
         <div><small>Next: $${nextBid}</small></div>
@@ -183,14 +164,11 @@ function renderItems(items) {
         <div id="status-${id}"></div>
       `;
 
-      previousWinners[id] = winner;
       div.appendChild(card);
     });
 }
 
 // ===== FETCH =====
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjcBzFLO9XFpkWhbTLaRdG4DqpAbrvmnEPc9EwwG6eTwfG73UTQGZD2-U10aeUCV-6/exec";
-
 async function fetchItems() {
   const res = await fetch(`${SCRIPT_URL}?items=true`, { cache:"no-store" });
   currentItems = await res.json();
@@ -200,7 +178,7 @@ async function fetchItems() {
 // ===== QUICK BID =====
 async function placeQuickBid(id, amt, btn) {
 
-  await fetchItems(); // 🔥 sync first
+  await fetchItems();
 
   const latest = currentItems.find(i => i.item_id == id);
   const latestBid = Number(latest?.current_bid) || 0;
@@ -217,8 +195,10 @@ async function placeQuickBid(id, amt, btn) {
   status.innerText = "Submitting...";
 
   pendingBids[id] = true;
-myBids[id] = true;
-renderItems(currentItems);
+  myBids[id] = true;
+  lockedItems[id] = true;
+
+  renderItems(currentItems);
 
   await fetch(SCRIPT_URL, {
     method:"POST",
@@ -231,9 +211,12 @@ renderItems(currentItems);
     })
   });
 
-  status.innerText = "⏳ Processing...";
   delete pendingBids[id];
+  delete lockedItems[id];
+
+  status.innerText = "⏳ Processing...";
   btn.disabled = false;
+
   fetchItems();
 }
 
@@ -262,7 +245,10 @@ async function placeCustomBid(id, btn) {
   status.innerText = "Submitting...";
 
   pendingBids[id] = true;
-myBids[id] = true;
+  myBids[id] = true;
+  lockedItems[id] = true;
+
+  renderItems(currentItems);
 
   await fetch(SCRIPT_URL, {
     method:"POST",
@@ -275,14 +261,18 @@ myBids[id] = true;
     })
   });
 
-  status.innerText = "⏳ Processing...";
   delete pendingBids[id];
+  delete lockedItems[id];
+
+  status.innerText = "⏳ Processing...";
   btn.disabled = false;
+
   fetchItems();
 }
 
 // ===== INIT =====
 document.addEventListener("DOMContentLoaded", () => {
+
   document.getElementById("userInfo").innerText =
     `${user.name} | Bidder #${user.bidderId} | Table ${user.table}`;
 
@@ -290,7 +280,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setInterval(() => {
     const now = Date.now();
-    if (!isInteracting && now - lastFetch > 2000) {
+    if (!isInteracting && Object.keys(lockedItems).length === 0 && now - lastFetch > 2000) {
       fetchItems();
       lastFetch = now;
     }
