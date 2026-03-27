@@ -239,16 +239,6 @@ async function fetchItems() {
 // ===== QUICK BID =====
 async function placeQuickBid(id, amt, btn) {
 
-  await fetchItems();
-
-  const latest = currentItems.find(i => i.item_id == id);
-  const latestBid = Number(latest?.current_bid) || 0;
-
-  if (amt <= latestBid) {
-    showToast("Already outbid — try higher");
-    return;
-  }
-
   if (!confirm(`Place bid of $${amt}?`)) return;
 
   btn.disabled = true;
@@ -288,16 +278,6 @@ async function placeCustomBid(id, btn) {
   const val = Number(input.value);
 
   if (!val) return showToast("Enter bid");
-
-  await fetchItems();
-
-  const latest = currentItems.find(i => i.item_id == id);
-  const latestBid = Number(latest?.current_bid) || 0;
-  const increment = Number(latest?.min_increment) || 50;
-
-  if (val < latestBid + increment) {
-    return showToast(`Minimum bid is $${latestBid + increment}`);
-  }
 
   if (!confirm(`Place bid of $${val}?`)) return;
 
@@ -345,7 +325,7 @@ document.addEventListener("DOMContentLoaded", () => {
       fetchItems();
       lastFetch = now;
     }
-  }, 1000);
+  }, 1500);
 });
 
 function goHome(){
