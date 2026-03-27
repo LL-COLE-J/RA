@@ -6,24 +6,6 @@
 <title>2026 Pink Gala Auction</title>
 
 <style>
-#auctionItems {
-  display: flex;
-  flex-direction: column;
-  gap: 20px; /* ~quarter inch spacing */
-}
-
-.bid-item {
-  width: 100%;
-  text-align: center;
-max-width: 600px;
-margin: 0 auto;
-}
-
-.submenu {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
 body {
   font-family: Arial, sans-serif;
   background: linear-gradient(to bottom right, #ffe6f0, #fff);
@@ -37,18 +19,30 @@ h1 {
   text-align: center;
 }
 
+#auctionItems {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .bid-item {
   border-radius: 12px;
   padding: 20px;
-  margin-bottom: 15px;
   background: linear-gradient(135deg, #d63384, #ff6fa3);
   color: white;
+  max-width: 600px;
+  margin: 0 auto;
+  transition: box-shadow 0.3s ease;
 }
 
 .bid-item.winning {
   background: #e8f7ee;
   color: black;
   border: 2px solid #28a745;
+}
+
+.bid-item.highlight {
+  box-shadow: 0 0 15px gold;
 }
 
 button {
@@ -64,20 +58,16 @@ input {
   padding: 6px;
   border-radius: 6px;
   border: 1px solid #ccc;
+  width: 100px;
 }
 
-.winning div:first-child {
-  font-size: 16px;
+img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
 }
-
-.bid-item img {
-  transition: transform 0.2s ease;
-}
-
-.bid-item:hover img {
-  transform: scale(1.03);
-}
-
 </style>
 </head>
 
@@ -89,34 +79,20 @@ input {
   <button onclick="goHome()">🏠 Home</button>
 </div>
 
-<div id="auctionPage">
-
-  <!-- USER BAR (NEW) -->
-  <div style="text-align:center; margin-bottom:20px;">
-    <strong id="userInfo"></strong>
-  </div>
-
-  <!-- AUCTION ITEMS -->
-  <div id="auctionItems"></div>
-
+<div style="text-align:center; margin-bottom:20px;">
+  <strong id="userInfo"></strong>
 </div>
 
-
-
+<div id="auctionItems"></div>
 
 <script>
 
-console.log("AUCTION VERSION 2");
+console.log("AUCTION V3 LOADED");
 
-let currentItems = [];
-let isInteracting = false;
-let previousWinners = {};
-
-// ===== USER FROM CHECK-IN =====
+// ===== USER =====
 const params = new URLSearchParams(window.location.search);
 
 const rawName = params.get("name") || "";
-
 const cleanName = decodeURIComponent(rawName).replace(/\+/g, " ");
 
 const user = {
@@ -125,230 +101,139 @@ const user = {
   table: params.get("table")
 };
 
+let currentBidder = user.bidderId;
+let currentGuest = user.name;
 
-// ===== RENDER ITEMS (FIXED) =====
+// ===== STATE =====
+let currentItems = [];
+let previousWinners = {};
+let lastBids = {};
+let isInteracting = false;
+let lastFetch = 0;
+
+// ===== TOAST =====
+function showToast(msg) {
+  const toast = document.createElement("div");
+  toast.innerText = msg;
+
+  toast.style.position = "fixed";
+  toast.style.bottom = "20px";
+  toast.style.left = "50%";
+  toast.style.transform = "translateX(-50%)";
+  toast.style.background = "#333";
+  toast.style.color = "#fff";
+  toast.style.padding = "12px 18px";
+  toast.style.borderRadius = "8px";
+  toast.style.zIndex = "9999";
+
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ===== RENDER =====
 function renderItems(items) {
 
   const div = document.getElementById("auctionItems");
-
-  if (!div) {
-    console.error("Missing #auctionItems");
-    return;
-  }
-
-  if (!items || items.length === 0) {
-    div.innerHTML = "<p>No items available</p>";
-    return;
-  }
-
   div.innerHTML = "";
 
   items
-    .filter(i => i && (i.name || i.ItemName))
-    .filter(i => {
-      const status = (i.status || "")
-        .toString()
-        .trim()
-        .toLowerCase();
-      return status === "open" || status === "";
-    })
-    .sort((a, b) => (parseFloat(b.current_bid) || 0) - (parseFloat(a.current_bid) || 0))
+    .filter(i => (i.status || "").toLowerCase() !== "closed")
+    .sort((a, b) => (b.current_bid || 0) - (a.current_bid || 0))
     .forEach(item => {
 
-      const name = item.name || item.ItemName;
-      const id = item.item_id || item.ItemID;
-      const currentBid = parseFloat(item.current_bid) || 0;
+      const id = item.item_id;
+      const name = item.name;
+      const currentBid = Number(item.current_bid) || 0;
       const winner = item.current_winner || "-";
-const image = item.image || "";
+      const image = item.image || "";
 
+      const isWinning = String(winner) === String(currentBidder);
+      const wasWinning = String(previousWinners[id]) === String(currentBidder);
 
-// 🔥 OUTBID DETECTION (FIXED)
-const wasWinning = String(previousWinners[id]) === String(currentBidder);
-const isWinningNow = String(item.current_winner) === String(currentBidder);
+      // 🔔 OUTBID DETECTION
+      if (wasWinning && !isWinning && !previousWinners[`alerted_${id}`]) {
+        showToast(`⚠️ Outbid on ${name}`);
+        previousWinners[`alerted_${id}`] = true;
+      }
 
-if (wasWinning && !isWinningNow && !previousWinners[`alerted_${id}`]) {
-  alert(`⚠️ You’ve been outbid on ${name}!`);
-  previousWinners[`alerted_${id}`] = true;
-}
+      if (isWinning) {
+        previousWinners[`alerted_${id}`] = false;
+      }
 
       const nextBid = currentBid + 50;
 
+      const card = document.createElement("div");
+      card.className = "bid-item";
 
+      if (isWinning) card.classList.add("winning");
 
-const card = document.createElement("div");
-card.className = "bid-item";
+      // ✨ highlight change
+      if (lastBids[id] && lastBids[id] !== currentBid) {
+        card.classList.add("highlight");
+      }
+      lastBids[id] = currentBid;
 
-// 🔥 check if winning
-const isWinning = String(item.current_winner) === String(currentBidder);
-// reset alert if user is winning again
-if (isWinning) {
-  previousWinners[`alerted_${id}`] = false;
-}
+      card.innerHTML = `
+        ${isWinning ? `<div style="font-weight:bold;color:#155724;">🏆 YOU ARE WINNING</div>` : ""}
 
-if (isWinning) {
-  card.classList.add("winning");
-}
+        <img src="${image}" 
+             onerror="this.src='https://via.placeholder.com/400x150?text=No+Image'">
 
-    card.innerHTML = `
-  ${isWinning ? `
-    <div style="font-weight:bold; color:#155724;font-size:16px; margin-bottom:8px;">
-      🏆 YOU ARE WINNING
-    </div>
-  ` : ""}
+        <div style="font-size:18px;font-weight:bold;">${name}</div>
 
- ${image ? `
-  <img src="${image}" 
-     onerror="this.style.display='none';"
-     style="width:100%; height:150px; object-fit:cover; border-radius:10px; margin-bottom:10px;">
-` : ""}
+        <div>
+          Current: <strong>$${currentBid}</strong><br>
+          Leader: ${winner}<br>
+          <small>Min Next Bid: $${nextBid}</small>
+        </div>
 
-<div style="font-size:18px; font-weight:bold; margin-bottom:8px;">
-  ${name}
-</div>
+        <button onclick="placeQuickBid('${id}', ${nextBid}, this)">
+          Bid $${nextBid}
+        </button>
 
-  <div style="margin-bottom:10px;">
-  Current: <strong>$${currentBid}</strong><br>
-  Leader: ${winner}<br>
-  <div style="font-size:12px; opacity:0.8;">
-    Min Next Bid: $${nextBid}
-  </div>
-</div>
+        <div style="margin-top:10px;">
+          <input id="input-${id}" type="number"
+            onfocus="isInteracting=true"
+            onblur="isInteracting=false">
+          <button onclick="placeCustomBid('${id}', this)">Submit</button>
+        </div>
 
- <button onclick="console.log('CLICK WORKING'); placeQuickBid('${id}', ${nextBid}, this)">
-    Bid $${nextBid}
-  </button>
+        <div id="status-${id}"></div>
+      `;
 
-  <div style="margin-top:10px;">
-    <input 
-  id="input-${id}" 
-  type="number" 
-  placeholder="Custom bid"
-  onfocus="isInteracting = true"
-  onblur="isInteracting = false"
->
-    <button onclick="placeCustomBid('${id}', this)">Submit</button>
-  </div>
-
-  <div id="status-${id}" style="margin-top:8px;"></div>
-`;
-
-previousWinners[id] = item.current_winner;
+      previousWinners[id] = winner;
 
       div.appendChild(card);
     });
 }
 
+// ===== FETCH =====
 const SCRIPT_URL = "https://cool-dawn-c169.llcolej8.workers.dev/";
 
-
-let currentGuest = user.name;
-console.log("CURRENT GUEST VALUE:", currentGuest);
-let currentBidder = user.bidderId;
-let currentTable = user.table;
-
-async function placeCustomBid(id, btn){
-
-  if (btn.disabled) return;
-  btn.disabled = true;
-
-  const statusEl = document.getElementById(`status-${id}`);
-  statusEl.innerText = "Submitting...";
-
-  const inputEl = document.getElementById(`input-${id}`);
-  const val = Number(inputEl.value);
-
-  if(!val){
-    btn.disabled = false;
-    return alert("Enter bid");
-  }
-
-  let item = currentItems.find(i => i.item_id == id);
-  const current = Number(item?.current_bid) || 0;
-
-  if (val <= current) {
-    btn.disabled = false;
-    return alert(`Bid must be greater than $${current}`);
-  }
-
+async function fetchItems() {
   try {
-console.log("FULL PAYLOAD:", {
-  bidder_name: currentGuest,
-  bidder_id: currentBidder
-});
-
-   await fetch(SCRIPT_URL, {
-  method: "POST",
-  body: new URLSearchParams({
-    bid: true,
-    item_id: id,
-    bidder_id: currentBidder,
-    bidder_name: currentGuest,   // ✅ ADD THIS
-    amount: val
-  })
-});
-
-    // assume success
-    statusEl.innerHTML = "<span style='color:lightgreen;'>🏆 You are winning!</span>";
-
-    if (item) {
-      item.current_bid = val;
-      item.current_winner = currentBidder;
-    }
-
+    const res = await fetch(`${SCRIPT_URL}?items=true`);
+    const data = await res.json();
+    currentItems = data;
     renderItems(currentItems);
-
-    inputEl.value = "";
-
-  } catch (err) {
-    statusEl.innerText = "⚠️ Error";
-    console.error(err);
-  }
-
-  btn.disabled = false;
-  fetchItems();
-}
-
-
-
-
-// ===== FETCH ITEMS =====
-async function fetchItems(){
-
-  const res = await fetch(`${SCRIPT_URL}?items=true`);
-
-  const text = await res.text(); // 👈 important
-  console.log("RAW:", text);
-
-  let data;
-  try {
-    data = JSON.parse(text);
   } catch (e) {
-    console.error("JSON parse failed:", e);
-    return;
+    console.error(e);
   }
-
-  console.log("PARSED:", data);
-
-  currentItems = data;
-
-  console.log("FINAL ITEMS:", currentItems);
-
-  renderItems(currentItems);
 }
 
-// ===== BID =====
-async function placeQuickBid(id, amt, btn){
+// ===== QUICK BID =====
+async function placeQuickBid(id, amt, btn) {
 
   if (btn.disabled) return;
 
-  const statusEl = document.getElementById(`status-${id}`);
+  if (!confirm(`Place bid of $${amt}?`)) return;
 
   btn.disabled = true;
 
-  // 🔵 STEP 1: show submitting
+  const statusEl = document.getElementById(`status-${id}`);
   statusEl.innerText = "Submitting...";
 
-  // ⚡ STEP 2: instant UI update
+  // ⚡ optimistic update
   const item = currentItems.find(i => i.item_id == id);
   if (item) {
     item.current_bid = amt;
@@ -358,54 +243,92 @@ async function placeQuickBid(id, amt, btn){
   renderItems(currentItems);
 
   try {
-
-    // 🧠 THIS = "fetch succeeds" point
     await fetch(SCRIPT_URL, {
       method: "POST",
       body: new URLSearchParams({
         bid: true,
         item_id: id,
         bidder_id: currentBidder,
-        bidder_name: currentGuest,  
+        bidder_name: currentGuest,
         amount: amt
       })
     });
 
-    // 🟢 STEP 3: success AFTER server confirms
-    statusEl.innerHTML = "<span style='color:lightgreen;'>🏆 You are winning!</span>";
+    statusEl.innerHTML = "🏆 Winning!";
 
-  } catch (err) {
-    statusEl.innerText = "⚠️ Error";
-    console.error(err);
+  } catch (e) {
+    statusEl.innerText = "Error";
   }
 
   btn.disabled = false;
   fetchItems();
 }
-  
+
+// ===== CUSTOM BID =====
+async function placeCustomBid(id, btn) {
+
+  if (btn.disabled) return;
+
+  const input = document.getElementById(`input-${id}`);
+  const val = Number(input.value);
+
+  if (!val) return showToast("Enter bid");
+
+  const item = currentItems.find(i => i.item_id == id);
+  const current = Number(item?.current_bid) || 0;
+
+  if (val <= current) return showToast(`Bid must exceed $${current}`);
+
+  if (!confirm(`Place bid of $${val}?`)) return;
+
+  btn.disabled = true;
+
+  const statusEl = document.getElementById(`status-${id}`);
+  statusEl.innerText = "Submitting...";
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: new URLSearchParams({
+        bid: true,
+        item_id: id,
+        bidder_id: currentBidder,
+        bidder_name: currentGuest,
+        amount: val
+      })
+    });
+
+    statusEl.innerHTML = "🏆 Winning!";
+
+  } catch (e) {
+    statusEl.innerText = "Error";
+  }
+
+  btn.disabled = false;
+  fetchItems();
+}
+
+// ===== INIT =====
 function goHome(){
   window.location.href = "/";
 }
 
 window.onload = () => {
 
-  console.log("Auction loaded for:", user);
-
-  // Show user info
   document.getElementById("userInfo").innerText =
     `${user.name} | Bidder #${user.bidderId} | Table ${user.table}`;
 
-  // Initial load
   fetchItems();
 
-  // 🔥 AUTO REFRESH EVERY 3 SECONDS
+  // 🔥 smarter polling
   setInterval(() => {
-  if (!isInteracting) {
-    fetchItems();
-  }
-}, 3000);
-
-}
+    const now = Date.now();
+    if (!isInteracting && now - lastFetch > 5000) {
+      fetchItems();
+      lastFetch = now;
+    }
+  }, 2000);
+};
 
 </script>
 </body>
