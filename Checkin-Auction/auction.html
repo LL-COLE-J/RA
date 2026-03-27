@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+
 <title>2026 Pink Gala Auction</title>
 
 <style>
@@ -12,14 +13,26 @@ body {
   margin: 0 auto;
   padding: 20px;
 }
-h1 { color: #d63384; text-align: center; }
-#auctionItems { display: flex; flex-direction: column; gap: 20px; }
+
+h1 {
+  color: #d63384;
+  text-align: center;
+}
+
+#auctionItems {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
 .bid-item {
   border-radius: 12px;
   padding: 20px;
   background: linear-gradient(135deg, #d63384, #ff6fa3);
   color: white;
+  max-width: 600px;
+  margin: 0 auto;
+  transition: box-shadow 0.3s ease;
 }
 
 .bid-item.winning {
@@ -28,7 +41,13 @@ h1 { color: #d63384; text-align: center; }
   border: 2px solid #28a745;
 }
 
-.bid-item.losing { opacity: 0.85; }
+.bid-item.highlight {
+  box-shadow: 0 0 15px gold;
+}
+
+.bid-item.losing {
+  opacity: 0.85;
+}
 
 button {
   background: #d63384;
@@ -45,6 +64,14 @@ input {
   border: 1px solid #ccc;
   width: 100px;
 }
+
+img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
 </style>
 </head>
 
@@ -52,15 +79,15 @@ input {
 
 <h1>2026 Pink Gala Auction</h1>
 
-<div style="text-align:center;">
+<div style="text-align:center; margin-bottom:15px;">
   <button onclick="goHome()">🏠 Home</button>
 </div>
 
-<div style="text-align:center;">
+<div style="text-align:center; margin-bottom:20px;">
   <strong id="userInfo"></strong>
 </div>
 
-<div style="text-align:center;">
+<div style="text-align:center; margin-bottom:15px;">
   <button onclick="toggleMyBids()" id="myBidsBtn">My Bids</button>
 </div>
 
@@ -84,6 +111,7 @@ let currentGuest = user.name;
 // ===== STATE =====
 let currentItems = [];
 let previousWinners = {};
+let lastBids = {};
 let myBids = {};
 let pendingBids = {};
 let lockedItems = {};
@@ -96,11 +124,20 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjcBzFLO9XFpkWhbTLa
 
 // ===== TOAST =====
 function showToast(msg) {
-  const t = document.createElement("div");
-  t.innerText = msg;
-  t.style = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px;border-radius:8px;";
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  const toast = document.createElement("div");
+  toast.innerText = msg;
+  toast.style.position = "fixed";
+  toast.style.bottom = "20px";
+  toast.style.left = "50%";
+  toast.style.transform = "translateX(-50%)";
+  toast.style.background = "#333";
+  toast.style.color = "#fff";
+  toast.style.padding = "12px 18px";
+  toast.style.borderRadius = "8px";
+  toast.style.zIndex = "9999";
+
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 // ===== TOGGLE =====
@@ -121,12 +158,18 @@ function renderItems(items) {
       if (!showMineOnly) return true;
       return String(item.current_winner) === String(currentBidder) || myBids[item.item_id];
     })
-    .sort((a,b) => (b.current_bid||0) - (a.current_bid||0))
+    .sort((a, b) => {
+      const aBid = Number(a.current_bid) || Number(a.starting_bid) || 0;
+      const bBid = Number(b.current_bid) || Number(b.starting_bid) || 0;
+      return bBid - aBid;
+    })
     .forEach(item => {
 
       const id = item.item_id;
-      const currentBid = Number(item.current_bid) || 0;
+      const name = item.name;
+      const currentBid = Number(item.current_bid) || Number(item.starting_bid) || 0;
       const winner = item.current_winner || "-";
+      const image = item.image || "";
 
       const isWinning = String(winner) === String(currentBidder);
       const hasBid = myBids[id];
@@ -140,18 +183,36 @@ function renderItems(items) {
       card.className = "bid-item";
 
       if (isWinning) card.classList.add("winning");
+
       if (!isWinning && hasBid && !isPending && !isLocked) {
         card.classList.add("losing");
       }
 
-      card.innerHTML = `
-        ${isWinning ? `<div>🏆 YOU ARE WINNING</div>` : ""}
-        ${isPending ? `<div>⏳ SUBMITTING BID...</div>` : ""}
-        ${!isWinning && hasBid && !isPending && !isLocked ? `<div>⚠️ YOU ARE LOSING</div>` : ""}
+      if (lastBids[id] && lastBids[id] !== currentBid) {
+        card.classList.add("highlight");
+      }
+      lastBids[id] = currentBid;
 
-        <div><b>${item.name}</b></div>
-        <div>Current: $${currentBid} | Leader: ${winner}</div>
-        <div><small>Next: $${nextBid}</small></div>
+      card.innerHTML = `
+        ${isWinning ? `<div style="font-weight:bold;color:#155724;">🏆 YOU ARE WINNING</div>` : ""}
+        ${isPending ? `<div style="font-weight:bold;">⏳ SUBMITTING BID...</div>` : ""}
+        ${!isWinning && hasBid && !isPending && !isLocked ? `<div style="font-weight:bold;color:#ffc107;">⚠️ YOU ARE LOSING</div>` : ""}
+
+        ${image ? `
+          <img src="${image}" onerror="this.style.display='none';">
+        ` : `
+          <div style="height:150px;border-radius:10px;margin-bottom:10px;background: linear-gradient(135deg, #ff9ac4, #ffd6e8);display:flex;align-items:center;justify-content:center;">
+            🎁
+          </div>
+        `}
+
+        <div style="font-size:18px;font-weight:bold;">${name}</div>
+
+        <div>
+          Current: <strong>$${currentBid}</strong><br>
+          Leader: ${winner}<br>
+          <small>Min Next Bid: $${nextBid}</small>
+        </div>
 
         ${item.status !== "open"
           ? `<button disabled>Closed</button>`
@@ -188,7 +249,7 @@ async function placeQuickBid(id, amt, btn) {
     return;
   }
 
-  if (!confirm(`Bid $${amt}?`)) return;
+  if (!confirm(`Place bid of $${amt}?`)) return;
 
   btn.disabled = true;
   const status = document.getElementById(`status-${id}`);
@@ -238,7 +299,7 @@ async function placeCustomBid(id, btn) {
     return showToast(`Minimum bid is $${latestBid + increment}`);
   }
 
-  if (!confirm(`Bid $${val}?`)) return;
+  if (!confirm(`Place bid of $${val}?`)) return;
 
   btn.disabled = true;
   const status = document.getElementById(`status-${id}`);
