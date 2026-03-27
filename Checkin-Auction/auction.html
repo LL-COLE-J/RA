@@ -110,140 +110,102 @@ let currentGuest = user.name;
 
 // ===== STATE =====
 let currentItems = [];
-let previousWinners = {};
-let lastBids = {};
+let itemMap = {};
+let lastDataHash = "";
 let myBids = {};
 let pendingBids = {};
 let lockedItems = {};
 let showMineOnly = false;
-let isInteracting = false;
-let lastFetch = 0;
 
 // ===== CONFIG =====
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjcBzFLO9XFpkWhbTLaRdG4DqpAbrvmnEPc9EwwG6eTwfG73UTQGZD2-U10aeUCV-6/exec";
 
 // ===== TOAST =====
 function showToast(msg) {
-  const toast = document.createElement("div");
-  toast.innerText = msg;
-  toast.style.position = "fixed";
-  toast.style.bottom = "20px";
-  toast.style.left = "50%";
-  toast.style.transform = "translateX(-50%)";
-  toast.style.background = "#333";
-  toast.style.color = "#fff";
-  toast.style.padding = "12px 18px";
-  toast.style.borderRadius = "8px";
-  toast.style.zIndex = "9999";
-
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
-
-// ===== TOGGLE =====
-function toggleMyBids() {
-  showMineOnly = !showMineOnly;
-  document.getElementById("myBidsBtn").innerText =
-    showMineOnly ? "Showing: My Bids" : "My Bids";
-  renderItems(currentItems);
+  const t = document.createElement("div");
+  t.innerText = msg;
+  t.style = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px;border-radius:8px;";
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
 // ===== RENDER =====
 function renderItems(items) {
   const div = document.getElementById("auctionItems");
-  div.innerHTML = "";
 
-  items
-    .filter(item => {
-      if (!showMineOnly) return true;
-      return String(item.current_winner) === String(currentBidder) || myBids[item.item_id];
-    })
-    .sort((a, b) => {
-      const aBid = Number(a.current_bid) || Number(a.starting_bid) || 0;
-      const bBid = Number(b.current_bid) || Number(b.starting_bid) || 0;
-      return bBid - aBid;
-    })
-    .forEach(item => {
+  items.forEach(item => {
 
-      const id = item.item_id;
-      const name = item.name;
-      const currentBid = Number(item.current_bid) || Number(item.starting_bid) || 0;
-      const winner = item.current_winner || "-";
-      const image = item.image || "";
+    const id = item.item_id;
+    let card = itemMap[id];
 
-      const isWinning = String(winner) === String(currentBidder);
-      const hasBid = myBids[id];
-      const isPending = pendingBids[id];
-      const isLocked = lockedItems[id];
-
-      const increment = Number(item.min_increment) || 50;
-      const nextBid = currentBid + increment;
-
-      const card = document.createElement("div");
+    if (!card) {
+      card = document.createElement("div");
       card.className = "bid-item";
-
-      if (isWinning) card.classList.add("winning");
-
-      if (!isWinning && hasBid && !isPending && !isLocked) {
-        card.classList.add("losing");
-      }
-
-      if (lastBids[id] && lastBids[id] !== currentBid) {
-        card.classList.add("highlight");
-      }
-      lastBids[id] = currentBid;
-
-      card.innerHTML = `
-        ${isWinning ? `<div style="font-weight:bold;color:#155724;">🏆 YOU ARE WINNING</div>` : ""}
-        ${isPending ? `<div style="font-weight:bold;">⏳ SUBMITTING BID...</div>` : ""}
-        ${!isWinning && hasBid && !isPending && !isLocked ? `<div style="font-weight:bold;color:#ffc107;">⚠️ YOU ARE LOSING</div>` : ""}
-
-        ${image ? `
-          <img src="${image}" onerror="this.style.display='none';">
-        ` : `
-          <div style="height:150px;border-radius:10px;margin-bottom:10px;background: linear-gradient(135deg, #ff9ac4, #ffd6e8);display:flex;align-items:center;justify-content:center;">
-            🎁
-          </div>
-        `}
-
-        <div style="font-size:18px;font-weight:bold;">${name}</div>
-
-        <div>
-          Current: <strong>$${currentBid}</strong><br>
-          Leader: ${winner}<br>
-          <small>Min Next Bid: $${nextBid}</small>
-        </div>
-
-        ${item.status !== "open"
-          ? `<button disabled>Closed</button>`
-          : `<button onclick="placeQuickBid('${id}', ${nextBid}, this)">Bid $${nextBid}</button>`
-        }
-
-        <input id="input-${id}" type="number">
-        <button onclick="placeCustomBid('${id}', this)">Submit</button>
-
-        <div id="status-${id}"></div>
-      `;
-
+      itemMap[id] = card;
       div.appendChild(card);
-    });
+    }
+
+    const currentBid = Number(item.current_bid) || Number(item.starting_bid) || 0;
+    const winner = item.current_winner || "-";
+    const image = item.image || "";
+
+    const isWinning = String(winner) === String(currentBidder);
+    const hasBid = myBids[id];
+    const isPending = pendingBids[id];
+    const isLocked = lockedItems[id];
+
+    const increment = Number(item.min_increment) || 50;
+    const nextBid = currentBid + increment;
+
+    card.className = "bid-item";
+    if (isWinning) card.classList.add("winning");
+    if (!isWinning && hasBid && !isPending && !isLocked) {
+      card.classList.add("losing");
+    }
+
+    card.innerHTML = `
+      ${isWinning ? `<div style="font-weight:bold;color:#155724;">🏆 YOU ARE WINNING</div>` : ""}
+      ${isPending ? `<div style="font-weight:bold;">⏳ SUBMITTING BID...</div>` : ""}
+      ${!isWinning && hasBid && !isPending && !isLocked ? `<div style="font-weight:bold;color:#ffc107;">⚠️ YOU ARE LOSING</div>` : ""}
+
+      ${image ? `<img src="${image}" loading="lazy">` : `<div style="height:150px;background:#ffd6e8;display:flex;align-items:center;justify-content:center;">🎁</div>`}
+
+      <div style="font-size:18px;font-weight:bold;">${item.name}</div>
+
+      <div>
+        Current: <strong>$${currentBid}</strong><br>
+        Leader: ${winner}<br>
+        <small>Min Next Bid: $${nextBid}</small>
+      </div>
+
+      <button onclick="placeQuickBid('${id}', ${nextBid}, this)">Bid $${nextBid}</button>
+
+      <input id="input-${id}" type="number">
+      <button onclick="placeCustomBid('${id}', this)">Submit</button>
+
+      <div id="status-${id}"></div>
+    `;
+  });
 }
 
 // ===== FETCH =====
 async function fetchItems() {
-  const res = await fetch(`${SCRIPT_URL}?items=true`, { cache:"no-store" });
-  currentItems = await res.json();
+  const res = await fetch(`${SCRIPT_URL}?items=true`);
+  const text = await res.text();
+
+  if (text === lastDataHash) return;
+
+  lastDataHash = text;
+  currentItems = JSON.parse(text);
   renderItems(currentItems);
 }
 
-// ===== QUICK BID =====
+// ===== BIDDING =====
 async function placeQuickBid(id, amt, btn) {
 
   if (!confirm(`Place bid of $${amt}?`)) return;
 
   btn.disabled = true;
-  const status = document.getElementById(`status-${id}`);
-  status.innerText = "Submitting...";
 
   pendingBids[id] = true;
   myBids[id] = true;
@@ -253,7 +215,7 @@ async function placeQuickBid(id, amt, btn) {
 
   await fetch(SCRIPT_URL, {
     method:"POST",
-    body: new URLSearchParams({
+    body:new URLSearchParams({
       bid:true,
       item_id:id,
       bidder_id:currentBidder,
@@ -265,25 +227,18 @@ async function placeQuickBid(id, amt, btn) {
   delete pendingBids[id];
   delete lockedItems[id];
 
-  status.innerText = "⏳ Processing...";
   btn.disabled = false;
-
   fetchItems();
 }
 
-// ===== CUSTOM BID =====
 async function placeCustomBid(id, btn) {
 
-  const input = document.getElementById(`input-${id}`);
-  const val = Number(input.value);
-
+  const val = Number(document.getElementById(`input-${id}`).value);
   if (!val) return showToast("Enter bid");
 
   if (!confirm(`Place bid of $${val}?`)) return;
 
   btn.disabled = true;
-  const status = document.getElementById(`status-${id}`);
-  status.innerText = "Submitting...";
 
   pendingBids[id] = true;
   myBids[id] = true;
@@ -293,7 +248,7 @@ async function placeCustomBid(id, btn) {
 
   await fetch(SCRIPT_URL, {
     method:"POST",
-    body: new URLSearchParams({
+    body:new URLSearchParams({
       bid:true,
       item_id:id,
       bidder_id:currentBidder,
@@ -305,9 +260,7 @@ async function placeCustomBid(id, btn) {
   delete pendingBids[id];
   delete lockedItems[id];
 
-  status.innerText = "⏳ Processing...";
   btn.disabled = false;
-
   fetchItems();
 }
 
@@ -320,12 +273,10 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchItems();
 
   setInterval(() => {
-    const now = Date.now();
-    if (!isInteracting && Object.keys(lockedItems).length === 0 && now - lastFetch > 2000) {
+    if (Object.keys(lockedItems).length === 0) {
       fetchItems();
-      lastFetch = now;
     }
-  }, 1500);
+  }, 2000);
 });
 
 function goHome(){
