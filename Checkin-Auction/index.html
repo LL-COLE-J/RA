@@ -151,7 +151,7 @@ async function loadGuests() {
     document.getElementById("loading").style.display = "none";
 
     const status = document.getElementById("status");
-    status.innerText = `${guestList.length} guests loaded — start typing`;
+    status.innerText = "Enter name";
     status.className = "status success";
 
   } catch {
@@ -193,7 +193,7 @@ function handleSearch(e) {
 
   if (!term) {
     renderList([]);
-    status.innerText = `${guestList.length} guests loaded — start typing`;
+    status.innerText = "Enter name";
     status.className = "status success";
     return;
   }
@@ -220,7 +220,7 @@ function handleCheckIn(id) {
   const guest = guestMap[id];
 
   document.getElementById("guestList").innerHTML = `
-    <div class="tableCard">
+    <div class="tableCard" onclick="resetCheckIn()"> 
       <div class="welcomeName">${guest.name}</div>
       <div class="tableNumber">${guest.table || "-"}</div>
       <div class="bidderNumber">Bidder #${guest.bidder || "-"}</div>
@@ -229,7 +229,7 @@ function handleCheckIn(id) {
         ✅ Checked In
       </div>
 
-      <button onclick="enterAuction('${guest.name}', '${guest.bidder}', '${guest.table}')">
+      <<button onclick="event.stopPropagation(); enterAuction('${guest.name}', '${guest.bidder}', '${guest.table}')">
         Enter Auction
       </button>
     </div>
@@ -237,7 +237,9 @@ function handleCheckIn(id) {
 
   confetti({ particleCount:60, spread:70, origin:{y:0.6} });
 
-  setTimeout(resetCheckIn, 2000);
+  setTimeout(() => {
+  if (!document.hidden) resetCheckIn();
+}, 8000);
 }
 
 /* QUEUE */
