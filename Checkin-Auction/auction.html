@@ -2,7 +2,6 @@
 <html>
 <head>
 <meta charset="utf-8">
-
 <title>2026 Pink Gala Auction</title>
 
 <style>
@@ -32,17 +31,12 @@ h1 {
   color: white;
   max-width: 600px;
   margin: 0 auto;
-  transition: box-shadow 0.3s ease;
 }
 
 .bid-item.winning {
   background: #e8f7ee;
   color: black;
   border: 2px solid #28a745;
-}
-
-.bid-item.highlight {
-  box-shadow: 0 0 15px gold;
 }
 
 .bid-item.losing {
@@ -79,15 +73,15 @@ img {
 
 <h1>2026 Pink Gala Auction</h1>
 
-<div style="text-align:center; margin-bottom:15px;">
+<div style="text-align:center;">
   <button onclick="goHome()">🏠 Home</button>
 </div>
 
-<div style="text-align:center; margin-bottom:20px;">
+<div style="text-align:center;">
   <strong id="userInfo"></strong>
 </div>
 
-<div style="text-align:center; margin-bottom:15px;">
+<div style="text-align:center;">
   <button onclick="toggleMyBids()" id="myBidsBtn">My Bids</button>
 </div>
 
@@ -129,6 +123,14 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 3000);
 }
 
+// ===== TOGGLE =====
+function toggleMyBids() {
+  showMineOnly = !showMineOnly;
+  document.getElementById("myBidsBtn").innerText =
+    showMineOnly ? "Showing: My Bids" : "My Bids";
+  renderItems(currentItems);
+}
+
 // ===== RENDER =====
 function renderItems(items) {
   const div = document.getElementById("auctionItems");
@@ -136,6 +138,7 @@ function renderItems(items) {
   items.forEach(item => {
 
     const id = item.item_id;
+
     let card = itemMap[id];
 
     if (!card) {
@@ -164,18 +167,18 @@ function renderItems(items) {
     }
 
     card.innerHTML = `
-      ${isWinning ? `<div style="font-weight:bold;color:#155724;">🏆 YOU ARE WINNING</div>` : ""}
-      ${isPending ? `<div style="font-weight:bold;">⏳ SUBMITTING BID...</div>` : ""}
-      ${!isWinning && hasBid && !isPending && !isLocked ? `<div style="font-weight:bold;color:#ffc107;">⚠️ YOU ARE LOSING</div>` : ""}
+      ${isWinning ? `<div><b>🏆 YOU ARE WINNING</b></div>` : ""}
+      ${isPending ? `<div><b>⏳ SUBMITTING BID...</b></div>` : ""}
+      ${!isWinning && hasBid && !isPending && !isLocked ? `<div><b>⚠️ YOU ARE LOSING</b></div>` : ""}
 
       ${image ? `<img src="${image}" loading="lazy">` : `<div style="height:150px;background:#ffd6e8;display:flex;align-items:center;justify-content:center;">🎁</div>`}
 
-      <div style="font-size:18px;font-weight:bold;">${item.name}</div>
+      <div><b>${item.name}</b></div>
 
       <div>
-        Current: <strong>$${currentBid}</strong><br>
+        Current: $${currentBid}<br>
         Leader: ${winner}<br>
-        <small>Min Next Bid: $${nextBid}</small>
+        Next: $${nextBid}
       </div>
 
       <button onclick="placeQuickBid('${id}', ${nextBid}, this)">Bid $${nextBid}</button>
@@ -190,19 +193,33 @@ function renderItems(items) {
 
 // ===== FETCH =====
 async function fetchItems() {
-  const res = await fetch(`${SCRIPT_URL}?items=true`);
-  const text = await res.text();
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
 
-  if (text === lastDataHash) return;
+    const res = await fetch(`${SCRIPT_URL}?items=true`, {
+      signal: controller.signal
+    });
 
-  lastDataHash = text;
-  currentItems = JSON.parse(text);
-  renderItems(currentItems);
+    clearTimeout(timeout);
+
+    const text = await res.text();
+
+    if (text === lastDataHash) return;
+
+    lastDataHash = text;
+    currentItems = JSON.parse(text);
+    renderItems(currentItems);
+
+  } catch (e) {
+    console.log("Fetch skipped");
+  }
 }
 
 // ===== BIDDING =====
 async function placeQuickBid(id, amt, btn) {
 
+  if (lockedItems[id]) return;
   if (!confirm(`Place bid of $${amt}?`)) return;
 
   btn.disabled = true;
@@ -232,6 +249,8 @@ async function placeQuickBid(id, amt, btn) {
 }
 
 async function placeCustomBid(id, btn) {
+
+  if (lockedItems[id]) return;
 
   const val = Number(document.getElementById(`input-${id}`).value);
   if (!val) return showToast("Enter bid");
@@ -264,6 +283,18 @@ async function placeCustomBid(id, btn) {
   fetchItems();
 }
 
+// ===== POLLING (RANDOMIZED) =====
+function startPolling() {
+  const delay = 1500 + Math.random() * 1500;
+
+  setTimeout(async () => {
+    if (Object.keys(lockedItems).length === 0) {
+      await fetchItems();
+    }
+    startPolling();
+  }, delay);
+}
+
 // ===== INIT =====
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -271,12 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
     `${user.name} | Bidder #${user.bidderId} | Table ${user.table}`;
 
   fetchItems();
-
-  setInterval(() => {
-    if (Object.keys(lockedItems).length === 0) {
-      fetchItems();
-    }
-  }, 2000);
+  startPolling();
 });
 
 function goHome(){
