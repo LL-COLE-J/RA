@@ -102,11 +102,13 @@ button{
 
 
 </div>
+
+  <script src="guests.js"></script>
 <script>
 
 const expectedIds = new Set();
 
-const SCRIPT_URL = "https://cool-dawn-c169.llcolej8.workers.dev/";
+
 
 /* =========================
    STATE (FAST + STABLE)
@@ -121,55 +123,28 @@ let isProcessing = false;
 /* =========================
    LOAD GUESTS
 ========================= */
-async function loadGuests() {
-  try {
+function loadGuests() {
 
-    const url = "https://cool-dawn-c169.llcolej8.workers.dev/?guests=true";
+  console.log("Loading guests from local file...");
 
-    console.log("FETCHING:", url);
+  guestList = GUESTS.map((g, i) => ({
+    id: g.id || i.toString(),
+    name: g.name,
+    bidder: g.bidder,
+    table: g.table,
+    checked: false
+  }));
 
-    const res = await fetch(url);
+  guestList.forEach(g => guestMap[g.id] = g);
 
-    const text = await res.text();
-    console.log("RAW RESPONSE:", text);
+  renderList([]);
 
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.error("JSON PARSE FAILED");
-      document.getElementById("loading").innerText = "BAD JSON";
-      return;
-    }
-
-    // 🔥 THIS LINE FIXES YOUR ERROR FOREVER
-    if (!Array.isArray(data)) {
-      console.error("NOT ARRAY:", data);
-      document.getElementById("loading").innerText = "INVALID RESPONSE";
-      return;
-    }
-
-    guestList = data.map((g, i) => ({
-      id: i.toString(),
-      name: g.name,
-      bidder: g.bidder,
-      table: g.table,
-      checked: g.CheckedIn === "YES"
-    }));
-
-    guestList.forEach(g => guestMap[g.id] = g);
-
-    renderList([]);
-
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("status").innerText =
-      `${guestList.length} guests loaded — start typing`;
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById("loading").innerText = "FAILED TO LOAD";
-  }
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("status").innerText =
+    `${guestList.length} guests loaded — start typing`;
 }
+
+    
 /* =========================
    RENDER
 ========================= */
