@@ -329,14 +329,14 @@ async function sendBatch(batch, attempt = 1) {
     });
 
     const text = await res.text();
-    console.log("POST RESPONSE:", text);
+console.log("POST RESPONSE:", text);
 
-    if (!res.ok) throw new Error("HTTP error");
+if (!res.ok) throw new Error("HTTP error");
 
-    const result = JSON.parse(text);
+const result = JSON.parse(text);
 
-    // 🔥 normalize response too
-    const processed = (result.processed || []).map(String);
+// 🔥 normalize response too
+const processed = (result.processed || []).map(String);
 
     // =========================
     // 🧠 REDUNDANT SAFETY CHECKS
