@@ -117,6 +117,7 @@ console.log("AUCTION VERSION 2");
 let currentItems = [];
 let isInteracting = false;
 let previousWinners = {};
+  let showMyBidsOnly = false;
 
 // ===== USER FROM CHECK-IN =====
 const params = new URLSearchParams(window.location.search);
@@ -132,7 +133,14 @@ const user = {
 };
 
 
+function toggleMyBids() {
+  showMyBidsOnly = !showMyBidsOnly;
 
+  const btn = document.getElementById("myBidsBtn");
+  btn.style.background = showMyBidsOnly ? "#28a745" : "#d63384";
+
+  renderItems(currentItems);
+}
 
 // ===== RENDER ITEMS (FIXED) =====
 function renderItems(items) {
@@ -152,22 +160,26 @@ function renderItems(items) {
   div.innerHTML = "";
 
   items
-    .filter(i => i && (i.name || i.ItemName))
-    .filter(i => {
-      const status = (i.status || "")
-        .toString()
-        .trim()
-        .toLowerCase();
-      return status === "open" || status === "";
-    })
-    .sort((a, b) => (parseFloat(b.current_bid) || 0) - (parseFloat(a.current_bid) || 0))
-    .forEach(item => {
+   let filteredItems = items
+  .filter(i => i && (i.name || i.ItemName))
+  .filter(i => {
+    const status = (i.status || "")
+      .toString()
+      .trim()
+      .toLowerCase();
+    return status === "open" || status === "";
+  });
 
-      const name = item.name || item.ItemName;
-      const id = item.item_id || item.ItemID;
-      const currentBid = parseFloat(item.current_bid) || 0;
-      const winner = item.current_winner || "-";
-const image = item.image || "";
+// 🎯 MY BIDS FILTER
+if (showMyBidsOnly) {
+  filteredItems = filteredItems.filter(i =>
+    String(i.current_winner) === String(currentBidder)
+  );
+}
+
+filteredItems
+  .sort((a, b) => (parseFloat(b.current_bid) || 0) - (parseFloat(a.current_bid) || 0))
+  .forEach(item => {
 
 
 // 🔥 OUTBID DETECTION (FIXED)
