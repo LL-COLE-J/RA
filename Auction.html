@@ -87,10 +87,15 @@ input {
 
 <div style="text-align:center; margin-bottom:20px;">
 
-  ="goHome()">🏠 Home</button>
+  <div style="text-align:center; margin-bottom:20px;">
 
-<button onclick="toggleMyBids()" id="myBidsBtn" style="margin-left:10px;">
+  <button onclick="goHome()">🏠 Home</button>
+
+  <button onclick="toggleMyBids()" id="myBidsBtn" style="margin-left:10px;">
+    🎯 My Bids
   </button>
+
+</div>
 
 </div>
 
@@ -132,14 +137,17 @@ const user = {
 };
 
 
-function () {
+function toggleMyBids() {
   showMyBidsOnly = !showMyBidsOnly;
 
   const btn = document.getElementById("myBidsBtn");
-  btn.style.background = showMyBidsOnly ? "#28a745" : "#d63384";
+  if (btn) {
+    btn.style.background = showMyBidsOnly ? "#28a745" : "#d63384";
+  }
 
   renderItems(currentItems);
 }
+  
 
 // ===== RENDER ITEMS (FIXED) =====
 function renderItems(items) {
