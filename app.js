@@ -25,7 +25,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Event ID
-const eventId = "Test Event";
+const eventId = "StuwZ94dD0c3zoLeMOG";
 console.log("RUNNING VERSION 2");
 
 // Reference to items
