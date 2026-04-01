@@ -1,6 +1,6 @@
 // Firebase imports
- from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
 import {
   getFirestore,
   collection,
@@ -8,8 +8,8 @@ import {
   getDoc,
   updateDoc,
   increment,
-  onSnapshot
-  runTransaction
+  onSnapshot,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // 🔑 FIXED CONFIG (no nesting)
