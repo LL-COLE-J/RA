@@ -24,7 +24,7 @@ const db = getFirestore(app);
 const eventId = "B96ooD5xwF7qMiSW5ot";
 
 // Reference to items
-collection(db, "events", eventId, "items")
+const itemsRef = collection(db, "events", eventId, "items");
 
 // Real-time listener
 onSnapshot(itemsRef, (snapshot) => {
