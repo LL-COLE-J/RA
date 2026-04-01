@@ -3,6 +3,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import {
   getFirestore,
   collection,
+  doc,
+  updateDoc,
+  increment,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -60,10 +63,21 @@ onSnapshot(itemsRef, (snapshot) => {
   });
 });
 
-document.addEventListener("click", (e) => {
+document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("bid-btn")) {
     const itemId = e.target.getAttribute("data-id");
 
-    console.log("BID CLICKED:", itemId);
+    const itemRef = doc(db, "events", eventId, "items", itemId);
+
+    try {
+      await updateDoc(itemRef, {
+        currentBid: increment(10),
+        bidCount: increment(1)
+      });
+
+      console.log("Bid placed on:", itemId);
+    } catch (err) {
+      console.error("Error placing bid:", err);
+    }
   }
 });
