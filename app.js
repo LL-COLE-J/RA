@@ -50,15 +50,20 @@ onSnapshot(itemsRef, (snapshot) => {
     const item = doc.data();
     console.log("ITEM:", item);
 
-    const el = document.createElement("div");
+   const el = document.createElement("div");
 el.className = "item-card";
 
-el.innerHTML = `
-  <div class="item-title">${item.name}</div>
-  <div class="item-desc">${item.description}</div>
+const name = item.name || "No name";
+const desc = item.description || "";
+const bid = item.currentBid || 0;
+const count = item.bidCount || 0;
 
-  <div class="bid">$${item.currentBid}</div>
-  <div class="bid-count">${item.bidCount} bids</div>
+el.innerHTML = `
+  <div class="item-title">${name}</div>
+  <div class="item-desc">${desc}</div>
+
+  <div class="bid">$${bid}</div>
+  <div class="bid-count">${count} bids</div>
 
   <button class="bid-btn" data-id="${doc.id}">
     Place Bid
