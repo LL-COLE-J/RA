@@ -28,11 +28,20 @@ const itemsRef = collection(db, "events", eventId, "items");
 
 // Real-time listener
 onSnapshot(itemsRef, (snapshot) => {
+  console.log("SNAPSHOT SIZE:", snapshot.size);
+
   const appDiv = document.getElementById("app");
+
+  if (!appDiv) {
+    console.log("APP DIV NOT FOUND");
+    return;
+  }
+
   appDiv.innerHTML = "";
 
   snapshot.forEach((doc) => {
     const item = doc.data();
+    console.log("ITEM:", item);
 
     const el = document.createElement("div");
     el.style.border = "1px solid #ccc";
