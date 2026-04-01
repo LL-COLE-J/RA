@@ -59,3 +59,11 @@ onSnapshot(itemsRef, (snapshot) => {
     appDiv.appendChild(el);
   });
 });
+
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("bid-btn")) {
+    const itemId = e.target.getAttribute("data-id");
+
+    console.log("BID CLICKED:", itemId);
+  }
+});
