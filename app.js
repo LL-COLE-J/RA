@@ -66,16 +66,19 @@ onSnapshot(itemsRef, (snapshot) => {
 
 document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("bid-btn")) {
-    const itemId = e.target.getAttribute("data-id");
+  const itemId = e.target.getAttribute("data-id");
 
-    const itemRef = doc(db, "events", eventId, "items", itemId);await updateDoc(itemRef, {
-  currentBid: increment(10),
-  bidCount: increment(1)
-});
+  const itemRef = doc(db, "events", eventId, "items", itemId);
 
-      console.log("Bid placed on:", itemId);
-    } catch (err) {
-      console.error("Error placing bid:", err);
-    }
+  try {
+    await updateDoc(itemRef, {
+      currentBid: increment(10),
+      bidCount: increment(1)
+    });
+
+    console.log("Bid placed");
+
+  } catch (err) {
+    console.error(err);
   }
-});
+}
