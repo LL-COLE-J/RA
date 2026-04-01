@@ -4,7 +4,7 @@ import {
   getFirestore,
   collection,
   doc,
-  getDoc
+  getDoc,
   updateDoc,
   increment,
   onSnapshot
@@ -25,7 +25,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Event ID
-const eventId = "B96oo0D5xwF7qMiSW5ot";
+const eventId = "B96ooD5xwF7qMiSW5ot";
 
 // Reference to items
 const itemsRef = collection(db, "events", eventId, "items");
@@ -82,3 +82,4 @@ document.addEventListener("click", async (e) => {
     console.error(err);
   }
 }
+});
