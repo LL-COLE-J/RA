@@ -68,13 +68,10 @@ document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("bid-btn")) {
     const itemId = e.target.getAttribute("data-id");
 
-    const itemRef = doc(db, "events", eventId, "items", itemId);
-
-    try {
-      await updateDoc(itemRef, {
-        currentBid: increment(10),
-        bidCount: increment(1)
-      });
+    const itemRef = doc(db, "events", eventId, "items", itemId);await updateDoc(itemRef, {
+  currentBid: increment(10),
+  bidCount: increment(1)
+});
 
       console.log("Bid placed on:", itemId);
     } catch (err) {
