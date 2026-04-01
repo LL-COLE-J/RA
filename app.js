@@ -26,6 +26,7 @@ const db = getFirestore(app);
 
 // Event ID
 const eventId = "B96ooD5xwF7qMiSW5ot";
+console.log("RUNNING VERSION 2");
 
 // Reference to items
 const itemsRef = collection(db, "events", eventId, "items");
