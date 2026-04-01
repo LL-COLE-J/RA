@@ -49,11 +49,12 @@ onSnapshot(itemsRef, (snapshot) => {
     el.style.margin = "10px";
 
     el.innerHTML = `
-      <h2>${item.name}</h2>
-      <p>${item.description}</p>
-      <strong>Current Bid: $${item.currentBid}</strong>
-      <p>Bids: ${item.bidCount}</p>
-    `;
+  <h2>${item.name}</h2>
+  <p>${item.description}</p>
+  <strong>Current Bid: $${item.currentBid}</strong>
+  <p>Bids: ${item.bidCount}</p>
+  <button class="bid-btn" data-id="${doc.id}">Place Bid</button>
+`;
 
     appDiv.appendChild(el);
   });
