@@ -4,6 +4,7 @@ import {
   getFirestore,
   collection,
   doc,
+  getDoc
   updateDoc,
   increment,
   onSnapshot
