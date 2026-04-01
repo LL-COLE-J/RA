@@ -6,9 +6,8 @@ import {
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 🔑 STEP 1 — PASTE YOUR REAL CONFIG HERE
+// 🔑 FIXED CONFIG (no nesting)
 const firebaseConfig = {
-  const firebaseConfig = {
   apiKey: "AIzaSyCCQLIzqaFsjp6krMRt5kgMoPZtE_af9ws",
   authDomain: "raiseaura-site.firebaseapp.com",
   projectId: "raiseaura-site",
@@ -21,13 +20,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 🔑 STEP 2 — PASTE YOUR EVENT ID HERE
-const eventId = "B96ooD5xwF7qMiSW5ot"; // ← yours from screenshot
+// Event ID
+const eventId = "B96ooD5xwF7qMiSW5ot";
 
 // Reference to items
 const itemsRef = collection(db, "events", eventId, "items");
 
-// 🔥 STEP 3 — REAL-TIME LISTENER
+// Real-time listener
 onSnapshot(itemsRef, (snapshot) => {
   const appDiv = document.getElementById("app");
   appDiv.innerHTML = "";
