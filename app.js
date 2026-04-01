@@ -1,4 +1,7 @@
 // Firebase imports
+import {
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore,
@@ -72,10 +75,26 @@ document.addEventListener("click", async (e) => {
   const itemRef = doc(db, "events", eventId, "items", itemId);
 
   try {
-    await updateDoc(itemRef, {
-      currentBid: increment(10),
-      bidCount: increment(1)
-    });
+   await runTransaction(db, async (transaction) => {
+  const snap = await transaction.get(itemRef);
+
+  if (!snap.exists()) {
+    throw "Item does not exist!";
+  }
+
+  const item = snap.data();
+
+  if (item.status !== "open") {
+    throw "Bidding closed";
+  }
+
+  const newBid = item.currentBid + 10;
+
+  transaction.update(itemRef, {
+    currentBid: newBid,
+    bidCount: item.bidCount + 1
+  });
+});
 
     console.log("Bid placed");
 
