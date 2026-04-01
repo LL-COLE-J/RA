@@ -60,7 +60,7 @@ onSnapshot(itemsRef, (snapshot) => {
   <p>${item.description}</p>
   <strong>Current Bid: $${item.currentBid}</strong>
   <p>Bids: ${item.bidCount}</p>
-  <button class="bid-btn" data-id="${doc.id}">Place Bid</button>
+ <button class="bid-btn" data-id="${doc.id}">Place Bid</button>
 `;
 
     appDiv.appendChild(el);
@@ -69,33 +69,43 @@ onSnapshot(itemsRef, (snapshot) => {
 
 document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("bid-btn")) {
-  const itemId = e.target.getAttribute("data-id");
 
-  const itemRef = doc(db, "events", eventId, "items", itemId);
+    const button = e.target;
+    const itemId = button.getAttribute("data-id");
 
-try {
-  await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(itemRef);
+    // 🔒 Disable button immediately
+    button.disabled = true;
+    const originalText = button.innerText;
+    button.innerText = "Placing...";
 
-    if (!snap.exists()) throw "Item missing";
+    const itemRef = doc(db, "events", eventId, "items", itemId);
 
-    const item = snap.data();
+    try {
+      await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(itemRef);
 
-    if (item.status !== "open") throw "Bidding closed";
+        if (!snap.exists()) throw "Item missing";
 
-    const newBid = item.currentBid + 10;
+        const item = snap.data();
 
-    transaction.update(itemRef, {
-      currentBid: newBid,
-      bidCount: item.bidCount + 1
-    });
-  });
+        if (item.status !== "open") throw "Bidding closed";
 
-  console.log("✅ Bid placed");
+        const newBid = item.currentBid + 10;
 
-} catch (err) {
-  console.warn("⚠️ Transaction failed:", err);
+        transaction.update(itemRef, {
+          currentBid: newBid,
+          bidCount: item.bidCount + 1
+        });
+      });
 
+      console.log("✅ Bid placed");
+
+    } catch (err) {
+      console.warn("⚠️ Transaction failed:", err);
+    }
+
+    // 🔓 Re-enable button
+    button.disabled = false;
+    button.innerText = originalText;
   }
-}
 });
