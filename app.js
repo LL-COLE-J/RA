@@ -73,32 +73,29 @@ document.addEventListener("click", async (e) => {
 
   const itemRef = doc(db, "events", eventId, "items", itemId);
 
-  try {
-   await runTransaction(db, async (transaction) => {
-  const snap = await transaction.get(itemRef);
+try {
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(itemRef);
 
-  if (!snap.exists()) {
-    throw "Item does not exist!";
-  }
+    if (!snap.exists()) throw "Item missing";
 
-  const item = snap.data();
+    const item = snap.data();
 
-  if (item.status !== "open") {
-    throw "Bidding closed";
-  }
+    if (item.status !== "open") throw "Bidding closed";
 
-  const newBid = item.currentBid + 10;
+    const newBid = item.currentBid + 10;
 
-  transaction.update(itemRef, {
-    currentBid: newBid,
-    bidCount: item.bidCount + 1
+    transaction.update(itemRef, {
+      currentBid: newBid,
+      bidCount: item.bidCount + 1
+    });
   });
-});
 
-    console.log("Bid placed");
+  console.log("✅ Bid placed");
 
-  } catch (err) {
-    console.error(err);
+} catch (err) {
+  console.warn("⚠️ Transaction failed:", err);
+
   }
 }
 });
