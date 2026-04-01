@@ -8,12 +8,13 @@ import {
 
 // 🔑 STEP 1 — PASTE YOUR REAL CONFIG HERE
 const firebaseConfig = {
-  apiKey: "PASTE_REAL_API_KEY",
-  authDomain: "PASTE_REAL_AUTH_DOMAIN",
-  projectId: "PASTE_REAL_PROJECT_ID",
-  storageBucket: "PASTE_REAL_BUCKET",
-  messagingSenderId: "PASTE_REAL_ID",
-  appId: "PASTE_REAL_APP_ID"
+  const firebaseConfig = {
+  apiKey: "AIzaSyCCQLIzqaFsjp6krMRt5kgMoPZtE_af9ws",
+  authDomain: "raiseaura-site.firebaseapp.com",
+  projectId: "raiseaura-site",
+  storageBucket: "raiseaura-site.firebasestorage.app",
+  messagingSenderId: "244577348867",
+  appId: "1:244577348867:web:92e392a70a8199801f0d36"
 };
 
 // Init Firebase
