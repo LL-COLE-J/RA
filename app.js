@@ -21,7 +21,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Event ID
-const eventId = "test";
+const eventId = "B96oo0D5xwF7qMiSW5ot";
 
 // Reference to items
 const itemsRef = collection(db, "events", eventId, "items");
