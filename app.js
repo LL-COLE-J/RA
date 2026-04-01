@@ -51,16 +51,18 @@ onSnapshot(itemsRef, (snapshot) => {
     console.log("ITEM:", item);
 
     const el = document.createElement("div");
-    el.style.border = "1px solid #ccc";
-    el.style.padding = "10px";
-    el.style.margin = "10px";
+el.className = "item-card";
 
-    el.innerHTML = `
-  <h2>${item.name}</h2>
-  <p>${item.description}</p>
-  <strong>Current Bid: $${item.currentBid}</strong>
-  <p>Bids: ${item.bidCount}</p>
- <button class="bid-btn" data-id="${doc.id}">Place Bid</button>
+el.innerHTML = `
+  <div class="item-title">${item.name}</div>
+  <div class="item-desc">${item.description}</div>
+
+  <div class="bid">$${item.currentBid}</div>
+  <div class="bid-count">${item.bidCount} bids</div>
+
+  <button class="bid-btn" data-id="${doc.id}">
+    Place Bid
+  </button>
 `;
 
     appDiv.appendChild(el);
