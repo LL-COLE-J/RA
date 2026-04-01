@@ -102,6 +102,7 @@ document.addEventListener("click", async (e) => {
 
     } catch (err) {
       console.warn("⚠️ Transaction failed:", err);
+      alert("Another bid just came in. Try again.");
     }
 
     // 🔓 Re-enable button
